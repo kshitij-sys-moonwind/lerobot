@@ -38,9 +38,8 @@ Usage:
         --push-to-hub \
         --branch main
 
-Note: This script now uses the modern `make_pre_post_processors` and `make_policy_config`
-factory functions from `lerobot.policies.factory` to create processors and configurations,
-ensuring consistency with the current codebase.
+The script decodes configurations with draccus and uses `make_pre_post_processors`
+to create processors consistent with the current codebase.
 
 The script extracts normalization statistics from the old model's state_dict, creates clean
 processor pipelines using the factory functions, and saves a migrated model that is compatible
@@ -51,7 +50,7 @@ import argparse
 import json
 import os
 from pathlib import Path
-from typing import Any, get_type_hints
+from typing import Any
 
 import draccus
 import torch
@@ -59,7 +58,7 @@ from huggingface_hub import HfApi, hf_hub_download
 from safetensors.torch import load_file as load_safetensors
 
 from lerobot.configs import FeatureType, NormalizationMode, PolicyFeature, PreTrainedConfig
-from lerobot.policies import get_policy_class, make_policy_config, make_pre_post_processors
+from lerobot.policies import get_policy_class, make_pre_post_processors
 from lerobot.utils.constants import ACTION
 
 
@@ -576,25 +575,20 @@ def main():
 
     # Convert input_features and output_features to PolicyFeature objects if they exist
     if "input_features" in cleaned_config:
-        cleaned_config["input_features"] = convert_features_to_policy_features(
-            cleaned_config["input_features"]
+        cleaned_config["input_features"] = draccus.encode(
+            convert_features_to_policy_features(cleaned_config["input_features"])
         )
     if "output_features" in cleaned_config:
-        cleaned_config["output_features"] = convert_features_to_policy_features(
-            cleaned_config["output_features"]
+        cleaned_config["output_features"] = draccus.encode(
+            convert_features_to_policy_features(cleaned_config["output_features"])
         )
 
     # Add normalization mapping to config
-    cleaned_config["normalization_mapping"] = norm_map
+    cleaned_config["normalization_mapping"] = {feature.name: mode.name for feature, mode in norm_map.items()}
 
-    # config.json stores `dtype` by name; decode it the way config loading does (a torch.dtype).
-    if "dtype" in cleaned_config:
-        dtype_type = get_type_hints(PreTrainedConfig.get_choice_class(policy_type))["dtype"]
-        cleaned_config["dtype"] = draccus.decode(dtype_type, cleaned_config["dtype"])
-
-    # Create policy configuration using the factory
+    # Decode all JSON fields, including tuple shapes and dtype, before constructing the config.
     print(f"Creating {policy_type} policy configuration...")
-    policy_config = make_policy_config(policy_type, **cleaned_config)
+    policy_config = draccus.decode(PreTrainedConfig.get_choice_class(policy_type), cleaned_config)
 
     # Create policy instance using the factory
     print(f"Instantiating {policy_type} policy...")

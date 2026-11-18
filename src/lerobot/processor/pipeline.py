@@ -748,7 +748,11 @@ class DataProcessorPipeline[TInput, TOutput](HubMixin):
             KeyError: If an override key doesn't match any step in the pipeline.
             ProcessorMigrationError: If the model requires migration to processor format.
         """
-        model_id = str(pretrained_model_name_or_path)
+        model_id = (
+            pretrained_model_name_or_path.as_posix()
+            if isinstance(pretrained_model_name_or_path, Path)
+            else pretrained_model_name_or_path
+        )
         model_path = Path(model_id)
         is_local_source = model_path.is_dir() or model_path.is_file()
         hub_download_kwargs = {

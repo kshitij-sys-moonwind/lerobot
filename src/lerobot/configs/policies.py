@@ -188,7 +188,11 @@ class PreTrainedConfig(draccus.ChoiceRegistry, HubMixin, abc.ABC):
         revision: str | None = None,
         **policy_kwargs: Any,
     ) -> T:
-        model_id = str(pretrained_name_or_path)
+        model_id = (
+            pretrained_name_or_path.as_posix()
+            if isinstance(pretrained_name_or_path, Path)
+            else pretrained_name_or_path
+        )
         config_file: str | None = None
         if Path(model_id).is_dir():
             if CONFIG_NAME in os.listdir(model_id):

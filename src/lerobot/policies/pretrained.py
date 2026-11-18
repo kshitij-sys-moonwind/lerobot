@@ -229,7 +229,11 @@ class PreTrainedPolicy(nn.Module, HubMixin, abc.ABC):
                 revision=revision,
                 **kwargs,
             )
-        model_id = str(pretrained_name_or_path)
+        model_id = (
+            pretrained_name_or_path.as_posix()
+            if isinstance(pretrained_name_or_path, Path)
+            else pretrained_name_or_path
+        )
         instance = cls(config, **kwargs)
         device = config.device
         if device is None:
