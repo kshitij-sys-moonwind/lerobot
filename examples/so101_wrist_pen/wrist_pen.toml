@@ -1,0 +1,32 @@
+# robot_sketch setup for the five-motor SO-101 with a rigid wrist-mounted pen.
+# Run from the LeRobot repository root to resolve calibration_dir.
+purpose = "hardware"
+start_joints_deg = []
+
+[tool]
+use_gripper = false
+parent_frame = "gripper_link"
+# Measured barrel diameter: 11.4 mm. Tip projection from the holder face: 56.1 mm.
+# The CAD transform assumes the holder's original orientation on the wrist horn.
+offset_m = [0.0411055, -0.000218, -0.0871503]
+rpy_rad = [-3.14159, 0.0, 0.0]
+
+[paper]
+# A6 in landscape. Measure the frame with the sheet and pad seated.
+width_m = 0.148
+height_m = 0.105
+origin_m = []
+x_axis = []
+y_axis = []
+
+[hardware]
+# All five motor offsets and encoder ranges matched the saved file on the arm.
+# The full drawing setup still needs a verified paper frame, start and operating limits.
+calibrated = false
+robot_id = "wrist_pen"
+port = "COM3"
+calibration_dir = "examples/so101_wrist_pen"
+lower_deg = []
+upper_deg = []
+workspace_min_m = []
+workspace_max_m = []
