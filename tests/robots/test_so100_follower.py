@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
@@ -23,6 +24,8 @@ from lerobot.robots.so_follower import (
     SO100Follower,
     SO100FollowerConfig,
 )
+
+pytestmark = pytest.mark.hardware
 
 
 def _make_bus_mock() -> MagicMock:
@@ -48,8 +51,8 @@ def _make_bus_mock() -> MagicMock:
     return bus
 
 
-@pytest.fixture
-def follower(tmp_path):
+@pytest.fixture(params=[True, False], ids=["gripper", "rigid_tool"])
+def follower(tmp_path, request):
     bus_mock = _make_bus_mock()
 
     def _bus_side_effect(*_args, **kwargs):
@@ -64,14 +67,11 @@ def follower(tmp_path):
         bus_mock.is_calibrated = True
         return bus_mock
 
-    with (
-        patch(
-            "lerobot.robots.so_follower.so_follower.SerialMotorsBus",
-            side_effect=_bus_side_effect,
-        ),
-        patch.object(SO100Follower, "configure", lambda self: None),
+    with patch(
+        "lerobot.robots.so_follower.so_follower.SerialMotorsBus",
+        side_effect=_bus_side_effect,
     ):
-        cfg = SO100FollowerConfig(port="/dev/null", calibration_dir=tmp_path)
+        cfg = SO100FollowerConfig(port="/dev/null", calibration_dir=tmp_path, use_gripper=request.param)
         robot = SO100Follower(cfg)
         yield robot
         if robot.is_connected:
@@ -97,6 +97,12 @@ def test_get_observation(follower):
 
     for idx, motor in enumerate(follower.bus.motors, 1):
         assert obs[f"{motor}.pos"] == idx
+
+    assert ("gripper.pos" in obs) == follower.config.use_gripper
+    assert set(obs) == set(follower.action_features) == set(follower.observation_features)
+    assert [m.id for m in follower.bus.motors.values()] == list(
+        range(1, 7 if follower.config.use_gripper else 6)
+    )
 
 
 def test_observation_keys_match_features_with_mock_camera(follower):
@@ -143,6 +149,44 @@ def test_send_action(follower):
 
     goal_pos = {m: (i + 1) * 10 for i, m in enumerate(follower.bus.motors)}
     follower.bus.sync_write.assert_called_once_with("Goal_Position", goal_pos)
+
+
+def test_absent_motor_rejected_before_bus_access(follower):
+    follower.connect()
+    follower.config.max_relative_target = 5.0
+    motor = "absent" if follower.config.use_gripper else "gripper"
+    with pytest.raises(ValueError, match="absent from this robot"):
+        follower.send_action({f"{motor}.pos": 30.0})
+    follower.bus.sync_read.assert_not_called()
+    follower.bus.sync_write.assert_not_called()
+
+
+def test_rigid_tool_reuses_arm_calibration_without_modifying_file(tmp_path):
+    names = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper")
+    saved = {
+        name: {"id": i, "drive_mode": 0, "homing_offset": 0, "range_min": 0, "range_max": 4095}
+        for i, name in enumerate(names, 1)
+    }
+    path = tmp_path / "pen.json"
+    path.write_text(json.dumps(saved))
+    bus = _make_bus_mock()
+    with patch("lerobot.robots.so_follower.so_follower.SerialMotorsBus", return_value=bus) as factory:
+        robot = SO100Follower(
+            SO100FollowerConfig(port="NEVER_OPEN", id="pen", calibration_dir=tmp_path, use_gripper=False)
+        )
+        assert tuple(robot.calibration) == names[:-1]
+        assert factory.call_args.kwargs["calibration"] == robot.calibration
+        assert tuple(factory.call_args.kwargs["motors"]) == names[:-1]
+        with patch("builtins.input", return_value=""):
+            assert robot._keep_calibration_file(bus)
+        bus.write_calibration.assert_called_once_with(robot.calibration)
+    assert json.loads(path.read_text()) == saved
+
+
+def test_rigid_tool_configures_only_arm_motors(follower):
+    SO100Follower.configure(follower)
+    configured = [call.args[1] for call in follower.bus.write.call_args_list]
+    assert set(configured) == set(follower.bus.motors)
 
 
 def test_configure_writes_position_pid_coefficients():

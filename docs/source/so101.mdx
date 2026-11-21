@@ -446,6 +446,36 @@ leader.disconnect()
 </hfoption>
 </hfoptions>
 
+### Use a fixed tool without the gripper motor
+
+For a pen or another rigid tool mounted after wrist roll, retain both wrist motors and set
+`use_gripper=False` in `SO101FollowerConfig`. The default remains `True` for a complete gripper.
+CLI robot configurations accept `--robot.use_gripper=false`, including `lerobot-calibrate`.
+
+```python
+config = SO101FollowerConfig(
+    port="/dev/ttyACM0",
+    id="wrist_pen",
+    use_degrees=True,
+    use_gripper=False,
+)
+```
+
+This selects motors 1–5 with their original IDs. The driver excludes the gripper from observations,
+actions, calibration, and bus operations. An existing calibration's gripper entry is omitted in memory;
+loading it does not rewrite the saved file. Check that the arm calibration still matches the assembly.
+Sending `gripper.pos` in this mode raises an error before any action reaches the motor bus.
+
+For Cartesian control, define a fixed tool-tip frame in your URDF and pass its name to
+`RobotKinematics(target_frame_name=..., joint_names=...)` with the five arm joints. Remove or fix
+the absent gripper joint in that model. Measure the tip translation and orientation relative to
+the final moving link. Five arm joints cannot generally satisfy an arbitrary six-component pose.
+
+Joint commands work directly with this configuration. Pipelines, leader teleoperation, datasets,
+or policies that include a gripper must use the matching five-joint action schema. The generic
+end-effector processors still expect gripper fields; a custom drawing adapter can call the
+kinematics solver and send the five joint targets directly.
+
 Congrats 🎉, your robot is all set to learn a task on its own. Start training it by following this tutorial: [Getting started with real-world robots](./il_robots)
 
 > [!TIP]

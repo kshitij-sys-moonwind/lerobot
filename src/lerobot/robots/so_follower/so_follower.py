@@ -66,16 +66,22 @@ class SOFollower(Robot):
         self.config = config
         # choose normalization mode depending on config if available
         norm_mode_body = MotorNormMode.DEGREES if config.use_degrees else MotorNormMode.RANGE_M100_100
+        motors = {
+            "shoulder_pan": Motor(1, "sts3215", norm_mode_body),
+            "shoulder_lift": Motor(2, "sts3215", norm_mode_body),
+            "elbow_flex": Motor(3, "sts3215", norm_mode_body),
+            "wrist_flex": Motor(4, "sts3215", norm_mode_body),
+            "wrist_roll": Motor(5, "sts3215", norm_mode_body),
+        }
+        if config.use_gripper:
+            motors["gripper"] = Motor(6, "sts3215", MotorNormMode.RANGE_0_100)
+        else:
+            # An existing six-motor calibration can still describe the remaining arm.
+            # Do not rewrite the saved file or pass the absent motor to calibration writes.
+            self.calibration.pop("gripper", None)
         self.bus = SerialMotorsBus(
             port=self.config.port,
-            motors={
-                "shoulder_pan": Motor(1, "sts3215", norm_mode_body),
-                "shoulder_lift": Motor(2, "sts3215", norm_mode_body),
-                "elbow_flex": Motor(3, "sts3215", norm_mode_body),
-                "wrist_flex": Motor(4, "sts3215", norm_mode_body),
-                "wrist_roll": Motor(5, "sts3215", norm_mode_body),
-                "gripper": Motor(6, "sts3215", MotorNormMode.RANGE_0_100),
-            },
+            motors=motors,
             calibration=self.calibration,
         )
         self.cameras = make_cameras_from_configs(config.cameras)
@@ -200,6 +206,8 @@ class SOFollower(Robot):
         """
 
         goal_pos = {key.removesuffix(".pos"): val for key, val in action.items() if key.endswith(".pos")}
+        if unknown := goal_pos.keys() - self.bus.motors.keys():
+            raise ValueError(f"Action targets motors absent from this robot: {sorted(unknown)}")
 
         # Cap goal position when too far away from present position.
         # /!\ Slower fps expected due to reading from the follower.
