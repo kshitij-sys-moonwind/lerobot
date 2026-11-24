@@ -88,6 +88,22 @@ def bus(dummy_motors):
     return bus
 
 
+@pytest.mark.parametrize("limits", [(0, 4095), (757, 3444), (764, 3251)])
+def test_degree_commands_preserve_encoder_counts_and_round_to_nearest(bus, limits):
+    motor = bus.motors["dummy_1"]
+    bus.motors["dummy_1"] = Motor(motor.id, motor.model, MotorNormMode.DEGREES)
+    bus.calibration = {
+        "dummy_1": MotorCalibration(1, 0, 0, limits[0], limits[1]),
+    }
+    resolution = bus.resolution(motor.model)
+    for raw in range(resolution):
+        assert bus._unnormalize(bus._normalize({1: raw})) == {1: raw}
+    midpoint = sum(limits) / 2
+    for count in (10.2, 10.8, 100.2, 100.8):
+        degrees = (count - midpoint) * 360 / (resolution - 1)
+        assert bus._unnormalize({1: degrees}) == {1: round(count)}
+
+
 @pytest.mark.parametrize(
     "data_name, id_, value, normalized",
     [

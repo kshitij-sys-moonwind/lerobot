@@ -1060,7 +1060,9 @@ class SerialMotorsBus(MotorsBusBase):
             elif self.motors[motor].norm_mode is MotorNormMode.DEGREES:
                 mid = (min_ + max_) / 2
                 max_res = self.resolution(self._id_to_model(id_)) - 1
-                unnormalized_values[id_] = int((val * max_res / 360) + mid)
+                # Use the nearest encoder count. Truncation biases degree commands
+                # and can lose a count when converting a measured position back.
+                unnormalized_values[id_] = round((val * max_res / 360) + mid)
             else:
                 raise NotImplementedError
 
