@@ -1,0 +1,64 @@
+{
+  "per_task": [
+    {
+      "task_group": "PushT-v0",
+      "task_id": 0,
+      "metrics": {
+        "sum_rewards": [
+          48.44378662109375
+        ],
+        "max_rewards": [
+          1.0
+        ],
+        "successes": [
+          true
+        ],
+        "video_paths": [
+          "outputs\\eval\\2026-11-16\\20-49-40_pusht_diffusion\\videos\\PushT-v0_0\\eval_episode_0.mp4"
+        ],
+        "predicted_video_paths": []
+      },
+      "n_episodes": 1,
+      "n_success": 1,
+      "pc_success": 100.0,
+      "pc_success_ci95": [
+        20.654931437723747,
+        100.0
+      ]
+    }
+  ],
+  "per_group": {
+    "PushT-v0": {
+      "avg_sum_reward": 48.44378662109375,
+      "avg_max_reward": 1.0,
+      "pc_success": 100.0,
+      "n_episodes": 1,
+      "n_success": 1,
+      "pc_success_ci95": [
+        20.654931437723747,
+        100.0
+      ],
+      "video_paths": [
+        "outputs\\eval\\2026-11-16\\20-49-40_pusht_diffusion\\videos\\PushT-v0_0\\eval_episode_0.mp4"
+      ],
+      "predicted_video_paths": []
+    }
+  },
+  "overall": {
+    "avg_sum_reward": 48.44378662109375,
+    "avg_max_reward": 1.0,
+    "pc_success": 100.0,
+    "n_episodes": 1,
+    "n_success": 1,
+    "pc_success_ci95": [
+      20.654931437723747,
+      100.0
+    ],
+    "eval_s": 263.5970070362091,
+    "eval_ep_s": 263.5970070362091,
+    "video_paths": [
+      "outputs\\eval\\2026-11-16\\20-49-40_pusht_diffusion\\videos\\PushT-v0_0\\eval_episode_0.mp4"
+    ],
+    "predicted_video_paths": []
+  }
+}
